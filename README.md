@@ -1,6 +1,7 @@
 # HttpHero
 A lightweight, asynchronous, Http Library which simplifies android HTTP Communication.
-You it caches the GET-Requests to save some network traffic.
+
+It caches the GET-Requests to save some network traffic.
 
 ### Include into your Project (AndroidStudio) 
 
@@ -25,7 +26,7 @@ You it caches the GET-Requests to save some network traffic.
             
             	@Override
             	public void onFailure() {
-            		Toast.makeText(MainActivity.this, "geht nicht", Toast.LENGTH_SHORT).show();
+            		Toast.makeText(MainActivity.this, "failure", Toast.LENGTH_SHORT).show();
             	}
             });
 ```
@@ -48,7 +49,7 @@ You it caches the GET-Requests to save some network traffic.
             
             	@Override
             	public void onFailure() {
-            		Toast.makeText(MainActivity.this, "geht nicht", Toast.LENGTH_SHORT).show();
+            		Toast.makeText(MainActivity.this, "failure", Toast.LENGTH_SHORT).show();
             	}
             });
 ```
