@@ -1,14 +1,9 @@
 package de.marcelgross.httphero;
 
 import java.net.HttpURLConnection;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
-import de.marcelgross.httphero.callable.CachedRequestCallable;
-import de.marcelgross.httphero.callable.NonCachedRequestCallable;
-import de.marcelgross.httphero.callable.RequestCallable;
+import de.marcelgross.httphero.callable.CachedRequestAsyncTask;
+import de.marcelgross.httphero.callable.NonCachedRequestAsyncTask;
 import de.marcelgross.httphero.request.Request;
 import de.marcelgross.httphero.request.property.HttpVerb;
 
@@ -39,61 +34,52 @@ public class HttpHero {
 	}
 
 	public void performRequest(Request request, HttpHeroResultListener listener) {
-		HttpHeroResponse response;
 		if (isCacheEnabled()) {
-			response = cachedRequest(request);
+			cachedRequest(request, listener);
 		} else {
-			response = normalRequest(request);
-		}
-
-		if (response == null) {
-			listener.onFailure();
-		} else {
-			listener.onSuccess(response);
+			normalRequest(request, listener);
 		}
 	}
 
-	private HttpHeroResponse cachedRequest(Request request) {
-		CacheEntry entry = cache.get(request.getUriTemplate());
+	private void cachedRequest(final Request request, final HttpHeroResultListener listener) {
+		final CacheEntry entry = cache.get(request.getUriTemplate());
 		if (entry != null && entry.getEtag() != null) {
 			request.setRequestHeader(getEtagHeader(entry.getEtag()));
 		}
-		RequestCallable requestCallable = new CachedRequestCallable(request);
-
-		HttpHeroResponse response = executeRequest(requestCallable);
-		if (response == null) {
-			return null;
-		} else {
-			if (response.getStatusCode() == HttpURLConnection.HTTP_NOT_MODIFIED) {
-				response = new HttpHeroResponse(entry);
-			} else {
-				if (request.getHttpVerb() == HttpVerb.GET) {
-					cache.put(request.getUriTemplate(), new CacheEntry(response));
-				} else if (request.getHttpVerb() == HttpVerb.DELETE) {
-					cache.remove(request.getUriTemplate());
+		new CachedRequestAsyncTask(new ResultListener() {
+			@Override
+			public void onSuccess(HttpHeroResponse response) {
+				if (response.getStatusCode() == HttpURLConnection.HTTP_NOT_MODIFIED) {
+					response = new HttpHeroResponse(entry);
+				} else {
+					if (request.getHttpVerb() == HttpVerb.GET) {
+						cache.put(request.getUriTemplate(), new CacheEntry(response));
+					} else if (request.getHttpVerb() == HttpVerb.DELETE) {
+						cache.remove(request.getUriTemplate());
+					}
 				}
+				listener.onSuccess(response);
 			}
-			return response;
-		}
+
+			@Override
+			public void onFailure() {
+				listener.onFailure();
+			}
+		}).execute(request);
 	}
 
-	private HttpHeroResponse normalRequest(Request request) {
-		RequestCallable requestCallable = new NonCachedRequestCallable(request);
+	private void normalRequest(Request request, final HttpHeroResultListener listener) {
+		new NonCachedRequestAsyncTask(new ResultListener() {
+			@Override
+			public void onSuccess(HttpHeroResponse response) {
+				listener.onSuccess(response);
+			}
 
-		return executeRequest(requestCallable);
-	}
-
-	private HttpHeroResponse executeRequest(RequestCallable requestCallable) {
-		ExecutorService executor = Executors.newSingleThreadExecutor();
-		Future<HttpHeroResponse> result = executor.submit(requestCallable);
-
-		try {
-			return result.get();
-		} catch (InterruptedException | ExecutionException e) {
-			return null;
-		} finally {
-			executor.shutdown();
-		}
+			@Override
+			public void onFailure() {
+				listener.onFailure();
+			}
+		}).execute(request);
 	}
 
 	private boolean isCacheEnabled() {

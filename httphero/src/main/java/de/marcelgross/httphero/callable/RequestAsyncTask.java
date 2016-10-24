@@ -1,5 +1,7 @@
 package de.marcelgross.httphero.callable;
 
+import android.os.AsyncTask;
+
 import java.io.DataOutputStream;
 import java.net.HttpURLConnection;
 import java.util.List;
@@ -7,25 +9,26 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 import de.marcelgross.httphero.HttpHeroResponse;
+import de.marcelgross.httphero.ResultListener;
 import de.marcelgross.httphero.request.Request;
 import de.marcelgross.httphero.request.property.ApiKey;
 import de.marcelgross.httphero.request.property.Authentication;
 import de.marcelgross.httphero.request.property.HttpVerb;
 
-public abstract class RequestCallable  implements Callable<HttpHeroResponse> {
+public abstract class RequestAsyncTask extends AsyncTask<Request, Void, HttpHeroResponse> {
 
-	Request request;
+	ResultListener listener;
 
-	public RequestCallable(Request request) {
-		this.request = request;
+	public RequestAsyncTask(ResultListener listener) {
+		this.listener = listener;
 	}
 
-	public void setHttpVerb(final HttpURLConnection con) throws Exception {
+	public void setHttpVerb(final HttpURLConnection con, final Request request) throws Exception {
 		final HttpVerb httpVerb = request.getHttpVerb();
 		con.setRequestMethod(httpVerb.name());
 	}
 
-	public void setApiKey(final HttpURLConnection con) {
+	public void setApiKey(final HttpURLConnection con, final Request request) {
 		final ApiKey apiKey = request.getApiKey();
 
 		if (apiKey != null) {
@@ -33,7 +36,7 @@ public abstract class RequestCallable  implements Callable<HttpHeroResponse> {
 		}
 	}
 
-	public void setAuthentication(final HttpURLConnection con) {
+	public void setAuthentication(final HttpURLConnection con, final Request request) {
 		final Authentication auth = request.getAuthentication();
 
 		if (auth != null) {
@@ -41,7 +44,7 @@ public abstract class RequestCallable  implements Callable<HttpHeroResponse> {
 		}
 	}
 
-	public void setMediaTypeDependentOfVerb(final HttpURLConnection connection) {
+	public void setMediaTypeDependentOfVerb(final HttpURLConnection connection, final Request request) {
 		final HttpVerb httpVerb = request.getHttpVerb();
 		final String mediaType = request.getMediaType();
 
@@ -52,7 +55,7 @@ public abstract class RequestCallable  implements Callable<HttpHeroResponse> {
 		}
 	}
 
-	public void setRequestHeader(final HttpURLConnection con) {
+	public void setRequestHeader(final HttpURLConnection con, final Request request) {
 		Map<String, List<String>> headers = request.getRequestHeader();
 
 		if (headers.size() > 0) {
@@ -64,7 +67,7 @@ public abstract class RequestCallable  implements Callable<HttpHeroResponse> {
 		}
 	}
 
-	public void writeRequestBody(final HttpURLConnection connection) throws Exception {
+	public void writeRequestBody(final HttpURLConnection connection, final Request request) throws Exception {
 		if (request.getRequestBody() != null) {
 			connection.setDoOutput(true);
 			DataOutputStream dataStream = new DataOutputStream(connection.getOutputStream());
